@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 # ==============================================================================
-# gen-navigator-layer.py — Génère un layer MITRE ATT&CK Navigator en fin de box
+# gen-navigator-layer.py — Generates a MITRE ATT&CK Navigator layer at box end
 # ------------------------------------------------------------------------------
-# En fin d'engagement HTB/lab autorisé, produit un fichier JSON importable dans
-# https://mitre-attack.github.io/attack-navigator/ pour visualiser les techniques
-# employées pendant la box.
+# At the end of an HTB/authorized-lab engagement, produces a JSON file importable
+# into https://mitre-attack.github.io/attack-navigator/ to visualize the
+# techniques used during the box.
 #
-# Usage :
-#   # via une liste d'IDs (argv), commentaire optionnel après ':'
+# Usage:
+#   # via a list of IDs (argv), optional comment after ':'
 #   python3 gen-navigator-layer.py -n "Box Forest" T1046 T1595.002 \
-#       "T1558.004:AS-REP roast de svc-alfresco" T1550.002:PtH -o forest.json
+#       "T1558.004:AS-REP roast of svc-alfresco" T1550.002:PtH -o forest.json
 #
-#   # ou depuis un fichier techniques.txt (un ID[:commentaire] par ligne)
+#   # or from a techniques.txt file (one ID[:comment] per line)
 #   python3 gen-navigator-layer.py -n "Box Forest" -f techniques.txt -o forest.json
 #
-# Le fichier techniques.txt accepte les commentaires '#' et lignes vides.
+# The techniques.txt file accepts '#' comments and blank lines.
 # ==============================================================================
 import argparse, datetime, json, sys
 
-# Catalogue des techniques couvertes par les skills htb-* (nom + tactique).
-# Toute technique fournie mais absente du catalogue est tout de même ajoutée
-# au layer (name "?"), pour ne jamais perdre une observation.
+# Catalog of techniques covered by the htb-* skills (name + tactic).
+# Any technique provided but missing from the catalog is still added to the
+# layer (name "?"), so an observation is never lost.
 CATALOG = {
     "T1595":     ("Active Scanning",                        "reconnaissance"),
     "T1595.002": ("Active Scanning: Vulnerability Scanning", "reconnaissance"),
@@ -54,7 +54,7 @@ CATALOG = {
 }
 
 USED_SCORE = 100
-USED_COLOR = "#c0392b"  # rouge : technique employée
+USED_COLOR = "#c0392b"  # red: technique used
 
 
 def load_from_file(path):
@@ -69,7 +69,7 @@ def load_from_file(path):
 
 
 def parse_item(raw):
-    """'T1558.004:commentaire' -> (id, commentaire)."""
+    """'T1558.004:comment' -> (id, comment)."""
     if ":" in raw:
         tid, comment = raw.split(":", 1)
         return tid.strip(), comment.strip()
@@ -114,11 +114,11 @@ def build_layer(name, items, description):
             "maxValue": 100,
         },
         "legendItems": [
-            {"label": "Technique employée sur la box", "color": USED_COLOR}
+            {"label": "Technique used on the box", "color": USED_COLOR}
         ],
         "metadata": [
-            {"name": "généré", "value": datetime.date.today().isoformat()},
-            {"name": "outil", "value": "htb-workflow/gen-navigator-layer.py"},
+            {"name": "generated", "value": datetime.date.today().isoformat()},
+            {"name": "tool", "value": "htb-workflow/gen-navigator-layer.py"},
         ],
         "showTacticRowBackground": True,
         "tacticRowBackground": "#205b70",
@@ -129,30 +129,30 @@ def build_layer(name, items, description):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Génère un layer ATT&CK Navigator (fin de box HTB).")
-    p.add_argument("-n", "--name", required=True, help="Nom du layer (ex. nom de la box).")
-    p.add_argument("-f", "--file", help="Fichier techniques.txt (un ID[:commentaire] par ligne).")
-    p.add_argument("-o", "--output", default="attack-layer.json", help="Fichier de sortie JSON.")
-    p.add_argument("-d", "--description", default="", help="Description libre du layer.")
-    p.add_argument("ids", nargs="*", help="IDs de techniques (ex. T1046 T1558.004:comment).")
+    p = argparse.ArgumentParser(description="Generates an ATT&CK Navigator layer (end of HTB box).")
+    p.add_argument("-n", "--name", required=True, help="Layer name (e.g. box name).")
+    p.add_argument("-f", "--file", help="techniques.txt file (one ID[:comment] per line).")
+    p.add_argument("-o", "--output", default="attack-layer.json", help="JSON output file.")
+    p.add_argument("-d", "--description", default="", help="Free-form layer description.")
+    p.add_argument("ids", nargs="*", help="Technique IDs (e.g. T1046 T1558.004:comment).")
     args = p.parse_args()
 
     items = list(args.ids)
     if args.file:
         items += load_from_file(args.file)
     if not items:
-        p.error("Fournir des techniques via des arguments ou -f fichier.")
+        p.error("Provide techniques via arguments or -f file.")
 
-    desc = args.description or f"Techniques MITRE ATT&CK employées — {args.name} (HTB, cible autorisée)."
+    desc = args.description or f"MITRE ATT&CK techniques used — {args.name} (HTB, authorized target)."
     layer, unknown = build_layer(args.name, items, desc)
 
     with open(args.output, "w", encoding="utf-8") as fh:
         json.dump(layer, fh, indent=2, ensure_ascii=False)
 
-    print(f"[+] Layer écrit : {args.output}  ({len(layer['techniques'])} techniques)")
+    print(f"[+] Layer written: {args.output}  ({len(layer['techniques'])} techniques)")
     if unknown:
-        print(f"[!] Hors catalogue (ajoutées quand même) : {', '.join(unknown)}", file=sys.stderr)
-    print("[*] Importer dans https://mitre-attack.github.io/attack-navigator/ "
+        print(f"[!] Off-catalog (added anyway): {', '.join(unknown)}", file=sys.stderr)
+    print("[*] Import into https://mitre-attack.github.io/attack-navigator/ "
           "-> Open Existing Layer -> Upload from local.")
 
 

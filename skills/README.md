@@ -1,59 +1,59 @@
-# SKILLs HTB pour agent IA (OpenClaw)
+# HTB SKILLs for the AI agent (OpenClaw)
 
-Bibliothèque de compétences que l'agent charge selon la phase de l'engagement.
-Chaque dossier contient un `SKILL.md` (frontmatter `name` + `description`, puis
-procédure et commandes). L'agent choisit la skill via la `description`.
+Library of skills the agent loads according to the engagement phase. Each folder
+contains a `SKILL.md` (`name` + `description` frontmatter, then procedure and
+commands). The agent picks the skill via the `description`.
 
-## Orchestration (à charger en premier)
+## Orchestration (load first)
 
-**[htb-workflow](htb-workflow/SKILL.md)** est le chef d'orchestre : il mappe chaque
-phase sur les tactiques **MITRE ATT&CK**, décide quelle skill appeler ensuite, et
-définit le format des fichiers d'état partagés (`creds.txt`, `notes.md`). L'agent
-le charge au début de la box, puis délègue aux skills spécialisées ci-dessous.
-En fin de box, il génère un **rapport ATT&CK Navigator** (layer JSON importable)
+**[htb-workflow](htb-workflow/SKILL.md)** is the conductor: it maps each phase to
+the **MITRE ATT&CK** tactics, decides which skill to call next, and defines the
+format of the shared state files (`creds.txt`, `notes.md`). The agent loads it at
+the start of the box, then delegates to the specialized skills below. At the end
+of the box, it generates an **ATT&CK Navigator report** (importable JSON layer)
 via `htb-workflow/gen-navigator-layer.py`.
 
-## Ordre logique d'un engagement HTB
+## Logical order of an HTB engagement
 
 ```
                          ┌──────────────┐
-                         │ htb-workflow │  (orchestrateur, MITRE ATT&CK)
+                         │ htb-workflow │  (orchestrator, MITRE ATT&CK)
                          └──────┬───────┘
                                 ▼
 htb-preflight ──► htb-recon ──► htb-web-enum ─┐
-(périmètre+VPN)             └─► htb-smb-enum ─┼─► htb-exploitation ──► htb-shells ──► htb-privesc
+(scope+VPN)                 └─► htb-smb-enum ─┼─► htb-exploitation ──► htb-shells ──► htb-privesc
                             └─► htb-active-directory ┘                                     │
                                                                                            ▼
-                               htb-password-attacks (transverse)    htb-pivoting ──► htb-report
-                                                                  (labs multi)   (rapport + ATT&CK layer)
+                               htb-password-attacks (cross-cutting)    htb-pivoting ──► htb-report
+                                                                    (multi-host)   (report + ATT&CK layer)
 ```
 
-## Index des skills
+## Skill index
 
-| Skill | Déclencheur | Rôle |
+| Skill | Trigger | Role |
 |---|---|---|
-| [htb-workflow](htb-workflow/SKILL.md) | Début de box / "quoi faire ensuite ?" | Orchestrateur aligné MITRE ATT&CK, état partagé |
-| [htb-preflight](htb-preflight/SKILL.md) | Avant toute action | Contrôle périmètre + VPN (tun0), fixe IP/LHOST |
-| [htb-recon](htb-recon/SKILL.md) | IP cible, début de box | Scan ports/services (nmap, rustscan, masscan) |
-| [htb-web-enum](htb-web-enum/SKILL.md) | Port 80/443/8080 ouvert | Fuzzing, vhosts, CMS (ffuf, feroxbuster, wpscan) |
-| [htb-smb-enum](htb-smb-enum/SKILL.md) | Port 445/139/389 | Partages, users, null session (netexec, enum4linux-ng) |
-| [htb-active-directory](htb-active-directory/SKILL.md) | Domain Controller / domaine .htb | Kerberoast, BloodHound, PtH, DCSync |
-| [htb-password-attacks](htb-password-attacks/SKILL.md) | Hash ou service d'auth | Craquage & brute force (hashcat, john, hydra) |
-| [htb-exploitation](htb-exploitation/SKILL.md) | Service + version connus | Exploit public / Metasploit → foothold |
-| [htb-shells](htb-shells/SKILL.md) | RCE / injection obtenue | Reverse shell + stabilisation TTY |
-| [htb-privesc](htb-privesc/SKILL.md) | Shell non privilégié | Escalade root/SYSTEM (linpeas, GTFOBins) |
-| [htb-pivoting](htb-pivoting/SKILL.md) | Réseau interne inaccessible | Tunnels (ligolo-ng, chisel, proxychains) |
-| [htb-report](htb-report/SKILL.md) | Flags obtenus, fin de box | Rapport Markdown -> PDF + annexe ATT&CK Navigator |
+| [htb-workflow](htb-workflow/SKILL.md) | Start of box / "what next?" | MITRE ATT&CK-aligned orchestrator, shared state |
+| [htb-preflight](htb-preflight/SKILL.md) | Before any action | Scope + VPN check (tun0), sets IP/LHOST |
+| [htb-recon](htb-recon/SKILL.md) | Target IP, start of box | Port/service scan (nmap, rustscan, masscan) |
+| [htb-web-enum](htb-web-enum/SKILL.md) | Port 80/443/8080 open | Fuzzing, vhosts, CMS (ffuf, feroxbuster, wpscan) |
+| [htb-smb-enum](htb-smb-enum/SKILL.md) | Port 445/139/389 | Shares, users, null session (netexec, enum4linux-ng) |
+| [htb-active-directory](htb-active-directory/SKILL.md) | Domain Controller / .htb domain | Kerberoast, BloodHound, PtH, DCSync |
+| [htb-password-attacks](htb-password-attacks/SKILL.md) | Hash or auth service | Cracking & brute force (hashcat, john, hydra) |
+| [htb-exploitation](htb-exploitation/SKILL.md) | Known service + version | Public exploit / Metasploit → foothold |
+| [htb-shells](htb-shells/SKILL.md) | RCE / injection obtained | Reverse shell + TTY stabilization |
+| [htb-privesc](htb-privesc/SKILL.md) | Unprivileged shell | Escalation to root/SYSTEM (linpeas, GTFOBins) |
+| [htb-pivoting](htb-pivoting/SKILL.md) | Internal network unreachable | Tunnels (ligolo-ng, chisel, proxychains) |
+| [htb-report](htb-report/SKILL.md) | Flags obtained, end of box | Markdown -> PDF report + ATT&CK Navigator appendix |
 
-## Convention
+## Conventions
 
-- `LHOST` / IP d'attaque = l'interface VPN HTB (`tun0`), jamais `eth0`.
-- Chaque credential trouvé va dans un `creds.txt` et est rejoué partout (reuse).
-- Les sorties d'outils sont sauvegardées (`-oN`, `-o`) pour re-parsing par l'agent.
+- `LHOST` / attack IP = the HTB VPN interface (`tun0`), never `eth0`.
+- Every credential found goes into a `creds.txt` and is replayed everywhere (reuse).
+- Tool outputs are saved (`-oN`, `-o`) for re-parsing by the agent.
 
-## Cadre légal
+## Legal framework
 
-Ces skills décrivent des techniques offensives destinées **exclusivement** à des
-cibles autorisées : machines Hack The Box assignées, labs personnels, CTF, et
-systèmes dont vous avez la propriété ou l'autorisation écrite de test. Toute
-utilisation hors de ce cadre est interdite.
+These skills describe offensive techniques intended **exclusively** for
+authorized targets: assigned Hack The Box machines, personal labs, CTFs, and
+systems you own or have written permission to test. Any use outside this
+framework is forbidden.

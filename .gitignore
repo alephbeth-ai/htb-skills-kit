@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 
-# Sorties de génération / engagements (ne pas versionner de données de box)
+# Generation outputs / engagements (do not version box data)
 *.json
 !skills/htb-workflow/attack-navigator-layer.template.json
 scans/
@@ -13,13 +13,13 @@ creds.txt
 notes.md
 techniques.txt
 
-# Journaux d'installation
+# Install logs
 htb-install-*.log
 
-# OS / éditeurs
+# OS / editors
 .DS_Store
 Thumbs.db
 *.swp
 
-# Config locale Claude Code (permissions machine, ne pas versionner)
+# Local Claude Code config (machine permissions, do not version)
 .claude/settings.local.json

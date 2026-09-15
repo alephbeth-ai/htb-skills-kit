@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # ==============================================================================
-# validate.py — Contrôles de cohérence du dépôt (utilisé par la CI)
+# validate.py — Repository consistency checks (used by CI)
 # ------------------------------------------------------------------------------
-# 1. Chaque skills/<nom>/SKILL.md a un frontmatter YAML valide avec 'name' et
-#    'description', et 'name' correspond au nom du dossier.
-# 2. Le layer ATT&CK Navigator (JSON) est valide et bien formé.
-# 3. gen-navigator-layer.py s'exécute et produit un JSON valide.
+# 1. Each skills/<name>/SKILL.md has valid YAML frontmatter with 'name' and
+#    'description', and 'name' matches the folder name.
+# 2. The ATT&CK Navigator layer (JSON) is valid and well-formed.
+# 3. gen-navigator-layer.py runs and produces valid JSON.
 #
-# Sortie : code 0 si tout est bon, 1 sinon, avec la liste des erreurs.
-# Usage : python tools/validate.py [racine_du_depot]
+# Output: exit code 0 if everything is fine, 1 otherwise, with the list of errors.
+# Usage: python tools/validate.py [repo_root]
 # ==============================================================================
 import json
 import pathlib
@@ -29,7 +29,7 @@ def fail(msg: str) -> None:
 
 
 def parse_frontmatter(text: str):
-    """Extrait le bloc YAML entre les deux '---' de tête."""
+    """Extract the YAML block between the two leading '---'."""
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
     if not m:
         return None
@@ -41,7 +41,7 @@ def validate_skills() -> None:
     skills_dir = ROOT / "skills"
     skill_files = sorted(skills_dir.glob("*/SKILL.md"))
     if not skill_files:
-        fail("Aucun SKILL.md trouvé sous skills/")
+        fail("No SKILL.md found under skills/")
         return
     names = set()
     for sf in skill_files:
@@ -50,48 +50,48 @@ def validate_skills() -> None:
         text = sf.read_text(encoding="utf-8")
         fm = parse_frontmatter(text)
         if fm is None:
-            fail(f"{rel}: frontmatter YAML absent ou mal formé")
+            fail(f"{rel}: YAML frontmatter missing or malformed")
             continue
         if not isinstance(fm, dict):
-            fail(f"{rel}: le frontmatter n'est pas un mapping YAML")
+            fail(f"{rel}: the frontmatter is not a YAML mapping")
             continue
         name = fm.get("name")
         desc = fm.get("description")
         if not name:
-            fail(f"{rel}: champ 'name' manquant")
+            fail(f"{rel}: 'name' field missing")
         if not desc:
-            fail(f"{rel}: champ 'description' manquant")
+            fail(f"{rel}: 'description' field missing")
         dir_name = sf.parent.name
         if name and name != dir_name:
-            fail(f"{rel}: name='{name}' != dossier '{dir_name}'")
+            fail(f"{rel}: name='{name}' != folder '{dir_name}'")
         if name in names:
-            fail(f"{rel}: nom de skill dupliqué '{name}'")
+            fail(f"{rel}: duplicate skill name '{name}'")
         names.add(name)
-    print(f"[skills] {len(skill_files)} SKILL.md vérifiés")
+    print(f"[skills] {len(skill_files)} SKILL.md checked")
 
 
 def validate_layer_json() -> None:
     global checks
     layer = ROOT / "skills/htb-workflow/attack-navigator-layer.template.json"
     if not layer.exists():
-        fail(f"{layer.relative_to(ROOT)}: fichier absent")
+        fail(f"{layer.relative_to(ROOT)}: file missing")
         return
     checks += 1
     try:
         data = json.loads(layer.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        fail(f"{layer.relative_to(ROOT)}: JSON invalide ({e})")
+        fail(f"{layer.relative_to(ROOT)}: invalid JSON ({e})")
         return
     for key in ("name", "versions", "domain", "techniques"):
         if key not in data:
-            fail(f"{layer.relative_to(ROOT)}: clé '{key}' manquante")
+            fail(f"{layer.relative_to(ROOT)}: key '{key}' missing")
     if not isinstance(data.get("techniques"), list) or not data["techniques"]:
-        fail(f"{layer.relative_to(ROOT)}: 'techniques' doit être une liste non vide")
+        fail(f"{layer.relative_to(ROOT)}: 'techniques' must be a non-empty list")
     for t in data.get("techniques", []):
         if "techniqueID" not in t:
-            fail(f"{layer.relative_to(ROOT)}: une technique sans 'techniqueID'")
+            fail(f"{layer.relative_to(ROOT)}: a technique without 'techniqueID'")
             break
-    print(f"[layer] {len(data.get('techniques', []))} techniques, JSON valide")
+    print(f"[layer] {len(data.get('techniques', []))} techniques, valid JSON")
 
 
 def validate_generator() -> None:
@@ -99,7 +99,7 @@ def validate_generator() -> None:
     gen = ROOT / "skills/htb-workflow/gen-navigator-layer.py"
     ex = ROOT / "skills/htb-workflow/techniques.example.txt"
     if not gen.exists() or not ex.exists():
-        fail("gen-navigator-layer.py ou techniques.example.txt absent")
+        fail("gen-navigator-layer.py or techniques.example.txt missing")
         return
     checks += 1
     with tempfile.TemporaryDirectory() as td:
@@ -109,30 +109,30 @@ def validate_generator() -> None:
             capture_output=True, text=True,
         )
         if r.returncode != 0:
-            fail(f"gen-navigator-layer.py a échoué : {r.stderr.strip()}")
+            fail(f"gen-navigator-layer.py failed: {r.stderr.strip()}")
             return
         try:
             data = json.loads(out.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, FileNotFoundError) as e:
-            fail(f"gen-navigator-layer.py : sortie JSON invalide ({e})")
+            fail(f"gen-navigator-layer.py: invalid JSON output ({e})")
             return
         if not data.get("techniques"):
-            fail("gen-navigator-layer.py : layer sans techniques")
-    print(f"[generator] exécution OK, {len(data.get('techniques', []))} techniques générées")
+            fail("gen-navigator-layer.py: layer without techniques")
+    print(f"[generator] ran OK, {len(data.get('techniques', []))} techniques generated")
 
 
 def main() -> int:
-    print(f"== Validation du dépôt : {ROOT} ==")
+    print(f"== Repository validation: {ROOT} ==")
     validate_skills()
     validate_layer_json()
     validate_generator()
-    print(f"\n{checks} groupes de contrôles exécutés.")
+    print(f"\n{checks} check groups executed.")
     if errors:
-        print(f"\n[ECHEC] {len(errors)} erreur(s) :")
+        print(f"\n[FAIL] {len(errors)} error(s):")
         for e in errors:
             print(f"  - {e}")
         return 1
-    print("\n[OK] Tout est valide.")
+    print("\n[OK] Everything is valid.")
     return 0
 
 

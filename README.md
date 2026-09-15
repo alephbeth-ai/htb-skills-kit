@@ -1,46 +1,46 @@
-# Claude-HTB-SKILL — Boîte à outils HTB + SKILLs agent IA (OpenClaw)
+# Claude-HTB-SKILL — HTB toolkit + AI agent SKILLs (OpenClaw)
 
-Deux livrables pour préparer un poste de pentest Hack The Box et piloter un agent
-IA (OpenClaw) sur ces outils :
+Two deliverables to set up a Hack The Box pentest workstation and drive an AI
+agent (OpenClaw) with these tools:
 
-1. **Scripts d'installation Bash** (`install/`) — posent les principaux outils HTB
-   sur **Kali** et sur **Ubuntu/Debian**.
-2. **Bibliothèque de SKILLs** (`skills/`) — 12 compétences que l'agent IA charge
-   selon la phase de l'engagement, orchestrées par `htb-workflow` (aligné MITRE
-   ATT&CK) : preflight → recon → exploit → privesc → pivot → report.
-3. **Outils d'exploitation** (`install/check-tools.sh`, `install/update-tools.sh`,
-   `bin/new-box.sh`) — vérifier l'environnement, suivre les versions, et préparer
-   un dossier d'engagement par box.
+1. **Bash install scripts** (`install/`) — lay down the main HTB tools on
+   **Kali** and on **Ubuntu/Debian**.
+2. **SKILL library** (`skills/`) — 12 skills the AI agent loads according to the
+   engagement phase, orchestrated by `htb-workflow` (aligned with MITRE
+   ATT&CK): preflight → recon → exploit → privesc → pivot → report.
+3. **Operational tools** (`install/check-tools.sh`, `install/update-tools.sh`,
+   `bin/new-box.sh`) — check the environment, track versions, and prepare a
+   per-box engagement folder.
 
-> ⚠️ **Usage légal uniquement.** Tout ce dépôt vise des cibles autorisées :
-> machines HTB assignées, labs personnels, CTF, systèmes dont vous avez
-> l'autorisation de test. Rien d'autre.
+> ⚠️ **Legal use only.** This entire repository targets authorized systems:
+> assigned HTB machines, personal labs, CTFs, and systems you have permission
+> to test. Nothing else.
 
-## Arborescence
+## Directory tree
 
 ```
 Claude-HTB-SKILL/
-├── .github/workflows/ci.yml   # CI : shellcheck + lint python + validation
-├── .shellcheckrc              # config ShellCheck (external-sources, exceptions)
-├── tools/validate.py          # valide frontmatter des skills + layer ATT&CK
+├── .github/workflows/ci.yml   # CI: shellcheck + python lint + validation
+├── .shellcheckrc              # ShellCheck config (external-sources, exceptions)
+├── tools/validate.py          # validates skill frontmatter + ATT&CK layer
 ├── install/
-│   ├── install-kali.sh        # Kali : garantit + ajoute les outils modernes
-│   ├── install-ubuntu.sh      # Ubuntu/Debian : tout depuis apt/pipx/go/GitHub
-│   ├── check-tools.sh         # healthcheck : quels outils sont présents/absents
-│   ├── update-tools.sh        # compare aux dernières releases / git pull /opt
-│   ├── versions.env           # versions épinglées (source unique de vérité)
-│   └── lib/common.sh          # helpers partagés (log, apt, pipx, go, résumé)
+│   ├── install-kali.sh        # Kali: ensures and adds the modern tools
+│   ├── install-ubuntu.sh      # Ubuntu/Debian: everything from apt/pipx/go/GitHub
+│   ├── check-tools.sh         # healthcheck: which tools are present/missing
+│   ├── update-tools.sh        # compares to latest releases / git pull /opt
+│   ├── versions.env           # pinned versions (single source of truth)
+│   └── lib/common.sh          # shared helpers (log, apt, pipx, go, summary)
 ├── bin/
-│   └── new-box.sh             # scaffolding d'un dossier d'engagement par box
+│   └── new-box.sh             # scaffolds a per-box engagement folder
 ├── skills/
-│   ├── README.md              # index + ordre logique des skills
-│   ├── htb-preflight/SKILL.md # contrôle périmètre + VPN (tun0), à lancer en 1er
-│   ├── htb-workflow/          # orchestrateur (MITRE ATT&CK)
+│   ├── README.md              # index + logical order of the skills
+│   ├── htb-preflight/SKILL.md # scope + VPN check (tun0), run this first
+│   ├── htb-workflow/          # orchestrator (MITRE ATT&CK)
 │   │   ├── SKILL.md
-│   │   ├── gen-navigator-layer.py            # génère le rapport ATT&CK Navigator
-│   │   ├── techniques.example.txt            # entrée exemple du générateur
-│   │   └── attack-navigator-layer.template.json  # layer modèle importable
-│   ├── htb-report/SKILL.md    # rapport final Markdown -> PDF (fin de box)
+│   │   ├── gen-navigator-layer.py            # generates the ATT&CK Navigator report
+│   │   ├── techniques.example.txt            # example input for the generator
+│   │   └── attack-navigator-layer.template.json  # importable template layer
+│   ├── htb-report/SKILL.md    # final Markdown -> PDF report (end of box)
 │   ├── htb-recon/SKILL.md
 │   ├── htb-web-enum/SKILL.md
 │   ├── htb-smb-enum/SKILL.md
@@ -55,33 +55,33 @@ Claude-HTB-SKILL/
 
 ## Installation
 
-Les scripts sont **idempotents** (relançables) et **modulaires** (installation par
-groupes). Transférez le dossier `install/` sur la machine Linux cible.
+The scripts are **idempotent** (safe to re-run) and **modular** (install by
+groups). Copy the `install/` folder onto the target Linux machine.
 
 ```bash
-# Kali — tout
+# Kali — everything
 chmod +x install/install-kali.sh install/lib/common.sh
 ./install/install-kali.sh
 
-# Ubuntu/Debian — tout
+# Ubuntu/Debian — everything
 chmod +x install/install-ubuntu.sh install/lib/common.sh
 ./install/install-ubuntu.sh
 
-# Groupes ciblés (ex. seulement web + AD)
+# Targeted groups (e.g. only web + AD)
 ./install/install-ubuntu.sh web ad
 
-# Lister les groupes
+# List the groups
 ./install/install-kali.sh --list
 ```
 
-Groupes disponibles : `core recon web smb ad passwords exploit shells privesc pivot wordlists`.
+Available groups: `core recon web smb ad passwords exploit shells privesc pivot wordlists`.
 
-Un journal détaillé est écrit dans `/tmp/htb-install-<date>.log`, et un résumé
-(installés / déjà présents / échecs) s'affiche à la fin.
+A detailed log is written to `/tmp/htb-install-<date>.log`, and a summary
+(installed / already present / failed) is shown at the end.
 
-### Ce qui est installé (aperçu)
+### What gets installed (overview)
 
-| Domaine | Outils |
+| Domain | Tools |
 |---|---|
 | Recon | nmap, masscan, rustscan, autorecon |
 | Web | ffuf, feroxbuster, gobuster, nikto, whatweb, wpscan, httpx, subfinder, nuclei, dirsearch |
@@ -93,65 +93,65 @@ Un journal détaillé est écrit dans `/tmp/htb-install-<date>.log`, et un résu
 | Pivot | ligolo-ng, chisel, proxychains4, sshuttle |
 | Wordlists | SecLists, rockyou |
 
-### Différences Kali vs Ubuntu
-- **Kali** : la majorité vient des dépôts Kali (`apt`) ; le script complète avec
-  netexec, ligolo-ng, rustscan et les scripts PEASS.
-- **Ubuntu** : pas de dépôts Kali (on ne les ajoute pas, c'est risqué). Tout passe
-  par `apt` (universe), `pipx`, `go install`, `gem` et des releases GitHub. Après
-  installation, rechargez le shell : `source ~/.bashrc` (pour `~/.local/bin` et `~/go/bin`).
+### Kali vs Ubuntu differences
+- **Kali**: most tools come from the Kali repositories (`apt`); the script tops
+  it off with netexec, ligolo-ng, rustscan and the PEASS scripts.
+- **Ubuntu**: no Kali repositories (we don't add them, it's risky). Everything
+  goes through `apt` (universe), `pipx`, `go install`, `gem` and GitHub
+  releases. After installation, reload the shell: `source ~/.bashrc` (for
+  `~/.local/bin` and `~/go/bin`).
 
-## Outils d'exploitation
+## Operational tools
 
 ```bash
-# Vérifier ce qui est installé (code de sortie ≠ 0 si manquants -> utile en CI)
-./install/check-tools.sh            # tous les groupes
-./install/check-tools.sh web ad     # groupes ciblés
+# Check what is installed (exit code ≠ 0 if missing -> useful in CI)
+./install/check-tools.sh            # all groups
+./install/check-tools.sh web ad     # targeted groups
 
-# Suivre les versions épinglées (versions.env) vs dernières releases GitHub
+# Track pinned versions (versions.env) vs latest GitHub releases
 ./install/update-tools.sh --check
-./install/update-tools.sh --pull    # git pull des dépôts clonés dans /opt
+./install/update-tools.sh --pull    # git pull the repos cloned in /opt
 
-# Préparer un dossier d'engagement (notes.md, creds.txt, techniques.txt, scans/…)
+# Prepare an engagement folder (notes.md, creds.txt, techniques.txt, scans/…)
 ./bin/new-box.sh "Forest" 10.10.10.161 forest.htb --hosts
-#   -> crée ~/htb/forest/ (variable HTB_DIR pour changer la base)
+#   -> creates ~/htb/forest/ (HTB_DIR variable to change the base)
 ```
 
-Les versions des binaires GitHub sont centralisées dans
-[`install/versions.env`](install/versions.env) : un seul fichier à éditer pour
-mettre à jour rustscan, ligolo-ng ou chisel.
+The versions of the GitHub binaries are centralized in
+[`install/versions.env`](install/versions.env): a single file to edit to update
+rustscan, ligolo-ng or chisel.
 
-## Qualité / Intégration continue
+## Quality / Continuous integration
 
-Un workflow GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml))
-s'exécute à chaque push / pull request et lance trois jobs :
+A GitHub Actions workflow ([.github/workflows/ci.yml](.github/workflows/ci.yml))
+runs on every push / pull request and launches three jobs:
 
-| Job | Contrôle |
+| Job | Check |
 |---|---|
-| **shellcheck** | Lint de tous les scripts `.sh` (config dans `.shellcheckrc`) + `bash -n` |
-| **python** | Lint `ruff` + compilation du générateur ATT&CK et du validateur |
-| **validate** | Frontmatter des `SKILL.md`, layer JSON, exécution de `gen-navigator-layer.py` |
+| **shellcheck** | Lint of every `.sh` script (config in `.shellcheckrc`) + `bash -n` |
+| **python** | `ruff` lint + compilation of the ATT&CK generator and the validator |
+| **validate** | `SKILL.md` frontmatter, JSON layer, execution of `gen-navigator-layer.py` |
 
-Reproduire les contrôles localement :
+Reproduce the checks locally:
 
 ```bash
-# Validation skills + layer ATT&CK (nécessite pyyaml)
+# Skills + ATT&CK layer validation (requires pyyaml)
 python tools/validate.py
 
-# ShellCheck (si installé)
+# ShellCheck (if installed)
 find . -name '*.sh' | xargs shellcheck --severity=warning
 ```
 
-> La CI ne se déclenche qu'une fois le dossier poussé sur un dépôt GitHub
-> (`git init`, commit, push). Le workflow tourne sur `ubuntu-latest`.
+> CI only triggers once the folder is pushed to a GitHub repository
+> (`git init`, commit, push). The workflow runs on `ubuntu-latest`.
 
-## SKILLs pour l'agent IA
+## SKILLs for the AI agent
 
-Voir [skills/README.md](skills/README.md) pour l'index et l'ordre logique.
-Format Claude Skill standard : chaque `SKILL.md` a un frontmatter `name` +
-`description` (utilisée par l'agent pour décider de la pertinence), puis une
-procédure avec commandes prêtes à l'emploi et des « réflexes » d'enchaînement
-vers la skill suivante.
+See [skills/README.md](skills/README.md) for the index and the logical order.
+Standard Claude Skill format: each `SKILL.md` has a `name` + `description`
+frontmatter (used by the agent to decide relevance), then a procedure with
+ready-to-use commands and "reflexes" that chain into the next skill.
 
-Pour les utiliser avec Claude Code / un agent : placez le dossier `skills/`
-là où l'agent découvre ses skills (par ex. `~/.claude/skills/`), ou pointez la
-configuration de l'agent vers ce répertoire.
+To use them with Claude Code / an agent: place the `skills/` folder where the
+agent discovers its skills (e.g. `~/.claude/skills/`), or point the agent's
+configuration at this directory.

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# install-ubuntu.sh — Outils HTB principaux pour Ubuntu / Debian (OpenClaw)
+# install-ubuntu.sh — Main HTB tools for Ubuntu / Debian (OpenClaw)
 # ------------------------------------------------------------------------------
-# Ubuntu ne dispose pas des dépôts Kali. Ce script installe les outils depuis :
-#   - apt (dépôts universe)
-#   - pipx (outils Python isolés)
-#   - go install (outils ProjectDiscovery, etc.)
-#   - releases GitHub (.deb / binaires) pour ce qui n'existe pas ailleurs
+# Ubuntu does not have the Kali repositories. This script installs the tools from:
+#   - apt (universe repositories)
+#   - pipx (isolated Python tools)
+#   - go install (ProjectDiscovery tools, etc.)
+#   - GitHub releases (.deb / binaries) for what is not available elsewhere
 #
-# On N'AJOUTE PAS les dépôts Kali à Ubuntu (risque de casser le système).
+# We do NOT ADD the Kali repositories to Ubuntu (risk of breaking the system).
 #
-# Usage :
-#   chmod +x install-ubuntu.sh && ./install-ubuntu.sh          # tout
-#   ./install-ubuntu.sh core web ad                            # groupes ciblés
+# Usage:
+#   chmod +x install-ubuntu.sh && ./install-ubuntu.sh          # everything
+#   ./install-ubuntu.sh core web ad                            # targeted groups
 #   ./install-ubuntu.sh --list
 #
-# ⚠️  Usage légal uniquement : Hack The Box, labs, CTF, systèmes autorisés.
+# ⚠️  Legal use only: Hack The Box, labs, CTF, authorized systems.
 # ==============================================================================
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,11 +26,11 @@ GROUPS_ALL=(core recon web smb ad passwords exploit shells privesc pivot wordlis
 
 usage() {
   cat <<EOF
-${C_BOLD}install-ubuntu.sh${C_RESET} — installe les outils HTB sur Ubuntu/Debian
+${C_BOLD}install-ubuntu.sh${C_RESET} — installs the HTB tools on Ubuntu/Debian
 
-Usage : $0 [groupes...]   (aucun argument = tous les groupes)
+Usage: $0 [groups...]   (no argument = all groups)
 
-Groupes :
+Groups:
   core       git, python3, pipx, go, build-essential, jq, nettools, seclists deps
   recon      nmap, masscan, rustscan(.deb), autorecon(pipx)
   web        gobuster(go), ffuf(go), feroxbuster(.deb), nikto, whatweb, wpscan,
@@ -46,7 +46,7 @@ Groupes :
   pivot      proxychains4, sshuttle, chisel(.bin), ligolo-ng(.bin)
   wordlists  SecLists(git), rockyou
 
-Options :
+Options:
   --list, -h/--help
 EOF
 }
@@ -59,8 +59,8 @@ esac
 
 ARCH="$(dpkg --print-architecture 2>/dev/null || echo amd64)"
 require_sudo
-section "Mise à jour des dépôts + activation de 'universe'"
-$SUDO apt-get update -y >>"$INSTALL_LOG" 2>&1 || warn "apt update a renvoyé une erreur"
+section "Updating repositories + enabling 'universe'"
+$SUDO apt-get update -y >>"$INSTALL_LOG" 2>&1 || warn "apt update returned an error"
 if have add-apt-repository; then
   $SUDO add-apt-repository -y universe >>"$INSTALL_LOG" 2>&1 || true
   $SUDO apt-get update -y >>"$INSTALL_LOG" 2>&1 || true
@@ -68,7 +68,7 @@ fi
 
 in_group() { local g; for g in "${GROUPS[@]}"; do [[ "$g" == "$1" ]] && return 0; done; return 1; }
 
-# S'assure que Go et pipx sont là si un groupe non-core en a besoin
+# Ensures Go and pipx are present if a non-core group needs them
 ensure_toolchain() {
   have go   || apt_pkgs golang-go
   have pipx || { apt_pkgs pipx || apt_pkgs python3-pip; have pipx || $SUDO python3 -m pip install --break-system-packages pipx >>"$INSTALL_LOG" 2>&1 || true; }
@@ -77,7 +77,7 @@ ensure_toolchain() {
 
 # ============================================================================
 if in_group core; then
-  section "core — bases système et langages"
+  section "core — system basics and languages"
   apt_pkgs git curl wget build-essential python3 python3-pip python3-venv pipx \
            golang-go jq net-tools dnsutils vim tmux unzip ripgrep gcc make \
            libssl-dev ruby ruby-dev
@@ -86,21 +86,21 @@ if in_group core; then
 fi
 
 if in_group recon; then
-  section "recon — découverte & scan"
+  section "recon — discovery & scanning"
   ensure_toolchain
   apt_pkgs nmap masscan
   pipx_install "git+https://github.com/Tib3rius/AutoRecon.git" autorecon
   if ! have rustscan; then
-    log "rustscan (.deb GitHub)…"
+    log "rustscan (.deb from GitHub)…"
     tmp="$(mktemp -d)"
     if curl -fsSL -o "$tmp/rs.deb" "https://github.com/RustScan/RustScan/releases/download/${RUSTSCAN_VERSION}/rustscan_${RUSTSCAN_VERSION}_amd64.deb" >>"$INSTALL_LOG" 2>&1 \
-       && $SUDO dpkg -i "$tmp/rs.deb" >>"$INSTALL_LOG" 2>&1; then INSTALLED_OK+=("rustscan"); else warn "rustscan échec"; INSTALLED_FAIL+=("rustscan"); fi
+       && $SUDO dpkg -i "$tmp/rs.deb" >>"$INSTALL_LOG" 2>&1; then INSTALLED_OK+=("rustscan"); else warn "rustscan failed"; INSTALLED_FAIL+=("rustscan"); fi
     rm -rf "$tmp"
   else INSTALLED_SKIP+=("rustscan"); fi
 fi
 
 if in_group web; then
-  section "web — énumération & fuzzing"
+  section "web — enumeration & fuzzing"
   ensure_toolchain
   apt_pkgs nikto whatweb dirb wfuzz
   go_install "github.com/OJ/gobuster/v3@latest" gobuster
@@ -109,20 +109,20 @@ if in_group web; then
   go_install "github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest" subfinder
   go_install "github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest" nuclei
   pipx_install dirsearch dirsearch
-  # feroxbuster (.deb officiel)
+  # feroxbuster (official .deb)
   if ! have feroxbuster; then
     log "feroxbuster…"
     tmp="$(mktemp -d)"
     if curl -fsSL "https://raw.githubusercontent.com/epi052/feroxbuster/main/install-nix.sh" -o "$tmp/f.sh" >>"$INSTALL_LOG" 2>&1 \
-       && $SUDO bash "$tmp/f.sh" /usr/local/bin >>"$INSTALL_LOG" 2>&1; then INSTALLED_OK+=("feroxbuster"); else warn "feroxbuster échec"; INSTALLED_FAIL+=("feroxbuster"); fi
+       && $SUDO bash "$tmp/f.sh" /usr/local/bin >>"$INSTALL_LOG" 2>&1; then INSTALLED_OK+=("feroxbuster"); else warn "feroxbuster failed"; INSTALLED_FAIL+=("feroxbuster"); fi
     rm -rf "$tmp"
   else INSTALLED_SKIP+=("feroxbuster"); fi
   # wpscan (gem)
-  if ! have wpscan; then have gem && ($SUDO gem install wpscan >>"$INSTALL_LOG" 2>&1 && INSTALLED_OK+=("wpscan") || { warn "wpscan échec"; INSTALLED_FAIL+=("wpscan"); }); fi
+  if ! have wpscan; then have gem && ($SUDO gem install wpscan >>"$INSTALL_LOG" 2>&1 && INSTALLED_OK+=("wpscan") || { warn "wpscan failed"; INSTALLED_FAIL+=("wpscan"); }); fi
 fi
 
 if in_group smb; then
-  section "smb — services réseau"
+  section "smb — network services"
   ensure_toolchain
   apt_pkgs smbclient ldap-utils snmp onesixtyone
   pipx_install impacket impacket
@@ -140,8 +140,8 @@ if in_group ad; then
   pipx_install certipy-ad certipy-ad
   pipx_install "git+https://github.com/Pennyw0rth/NetExec" netexec
   go_install "github.com/ropnop/kerbrute@latest" kerbrute
-  if ! have evil-winrm; then have gem && ($SUDO gem install evil-winrm >>"$INSTALL_LOG" 2>&1 && INSTALLED_OK+=("evil-winrm") || { warn "evil-winrm échec"; INSTALLED_FAIL+=("evil-winrm"); }); fi
-  warn "BloodHound GUI : installez l'app depuis github.com/SpecterOps/BloodHound (Docker conseillé). Ici seul le collector Python est posé."
+  if ! have evil-winrm; then have gem && ($SUDO gem install evil-winrm >>"$INSTALL_LOG" 2>&1 && INSTALLED_OK+=("evil-winrm") || { warn "evil-winrm failed"; INSTALLED_FAIL+=("evil-winrm"); }); fi
+  warn "BloodHound GUI: install the app from github.com/SpecterOps/BloodHound (Docker recommended). Only the Python collector is set up here."
 fi
 
 if in_group passwords; then
@@ -154,12 +154,12 @@ fi
 
 if in_group exploit; then
   section "exploit — Metasploit & searchsploit"
-  # Metasploit : installeur officiel Rapid7 (nightly), pas de dépôt apt sur Ubuntu
+  # Metasploit: official Rapid7 installer (nightly), no apt repository on Ubuntu
   if ! have msfconsole; then
-    log "Metasploit (installeur officiel Rapid7)…"
+    log "Metasploit (official Rapid7 installer)…"
     tmp="$(mktemp)"
     if curl -fsSL "https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb" -o "$tmp" >>"$INSTALL_LOG" 2>&1 \
-       && $SUDO chmod 755 "$tmp" && $SUDO "$tmp" >>"$INSTALL_LOG" 2>&1; then INSTALLED_OK+=("metasploit"); else warn "metasploit échec (voir log)"; INSTALLED_FAIL+=("metasploit"); fi
+       && $SUDO chmod 755 "$tmp" && $SUDO "$tmp" >>"$INSTALL_LOG" 2>&1; then INSTALLED_OK+=("metasploit"); else warn "metasploit failed (see log)"; INSTALLED_FAIL+=("metasploit"); fi
     rm -f "$tmp"
   else INSTALLED_SKIP+=("metasploit"); fi
   # exploitdb / searchsploit
@@ -176,7 +176,7 @@ if in_group shells; then
 fi
 
 if in_group privesc; then
-  section "privesc — élévation de privilèges"
+  section "privesc — privilege escalation"
   git_clone_opt "https://github.com/peass-ng/PEASS-ng.git" "PEASS-ng"
   git_clone_opt "https://github.com/DominicBreuker/pspy.git" "pspy"
   git_clone_opt "https://github.com/The-Z-Labs/linux-exploit-suggester.git" "linux-exploit-suggester"
@@ -186,12 +186,12 @@ fi
 if in_group pivot; then
   section "pivot — tunneling & pivoting"
   apt_pkgs proxychains4 sshuttle
-  # chisel (binaire GitHub)
+  # chisel (GitHub binary)
   if ! have chisel; then
     log "chisel…"
     tmp="$(mktemp -d)"
     if curl -fsSL -o "$tmp/chisel.gz" "https://github.com/jpillora/chisel/releases/download/v${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_${ARCH}.gz" >>"$INSTALL_LOG" 2>&1 \
-       && gunzip "$tmp/chisel.gz" && $SUDO install -m755 "$tmp/chisel" /usr/local/bin/chisel; then INSTALLED_OK+=("chisel"); else warn "chisel échec"; INSTALLED_FAIL+=("chisel"); fi
+       && gunzip "$tmp/chisel.gz" && $SUDO install -m755 "$tmp/chisel" /usr/local/bin/chisel; then INSTALLED_OK+=("chisel"); else warn "chisel failed"; INSTALLED_FAIL+=("chisel"); fi
     rm -rf "$tmp"
   else INSTALLED_SKIP+=("chisel"); fi
   # ligolo-ng
@@ -201,18 +201,18 @@ if in_group pivot; then
     if curl -fsSL -o "$tmp/p.tgz" "$base/ligolo-ng_proxy_${LIGOLO_VERSION}_linux_amd64.tar.gz" >>"$INSTALL_LOG" 2>&1; then
       tar -xzf "$tmp/p.tgz" -C "$tmp" && $SUDO install -m755 "$tmp/proxy" /usr/local/bin/ligolo-proxy && INSTALLED_OK+=("ligolo-proxy")
       curl -fsSL -o "$tmp/a.tgz" "$base/ligolo-ng_agent_${LIGOLO_VERSION}_linux_amd64.tar.gz" >>"$INSTALL_LOG" 2>&1 \
-        && tar -xzf "$tmp/a.tgz" -C "$tmp" && $SUDO install -m755 "$tmp/agent" /usr/local/bin/ligolo-agent && ok "ligolo-agent posé (à copier sur la cible)"
-    else warn "ligolo-ng échec"; INSTALLED_FAIL+=("ligolo-ng"); fi
+        && tar -xzf "$tmp/a.tgz" -C "$tmp" && $SUDO install -m755 "$tmp/agent" /usr/local/bin/ligolo-agent && ok "ligolo-agent set up (to copy onto the target)"
+    else warn "ligolo-ng failed"; INSTALLED_FAIL+=("ligolo-ng"); fi
     rm -rf "$tmp"
   else INSTALLED_SKIP+=("ligolo-proxy"); fi
 fi
 
 if in_group wordlists; then
-  section "wordlists — dictionnaires"
+  section "wordlists — dictionaries"
   $SUDO mkdir -p /usr/share/wordlists
   git_clone_opt "https://github.com/danielmiessler/SecLists.git" "SecLists"
   [[ -d /opt/SecLists ]] && $SUDO ln -sfn /opt/SecLists /usr/share/seclists && ok "SecLists -> /usr/share/seclists"
-  # rockyou depuis SecLists
+  # rockyou from SecLists
   if [[ -f /opt/SecLists/Passwords/Leaked-Databases/rockyou.txt.tar.gz && ! -f /usr/share/wordlists/rockyou.txt ]]; then
     $SUDO tar -xzf /opt/SecLists/Passwords/Leaked-Databases/rockyou.txt.tar.gz -C /usr/share/wordlists >>"$INSTALL_LOG" 2>&1 && ok "rockyou.txt -> /usr/share/wordlists/"
   fi
@@ -220,4 +220,4 @@ fi
 
 print_summary
 echo
-warn "Pensez à recharger votre shell (source ~/.bashrc) pour que ~/.local/bin et ~/go/bin soient dans le PATH."
+warn "Remember to reload your shell (source ~/.bashrc) so that ~/.local/bin and ~/go/bin are in the PATH."
