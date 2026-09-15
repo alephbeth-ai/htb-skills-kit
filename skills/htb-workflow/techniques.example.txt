@@ -1,0 +1,36 @@
+# techniques.example.txt — exemple d'entrée pour gen-navigator-layer.py
+# Un identifiant ATT&CK par ligne, commentaire optionnel après ':'.
+# Lignes vides et '#' ignorées. Renseigner au fur et à mesure de la box.
+#
+#  python3 gen-navigator-layer.py -n "Nom de la box" -f techniques.txt -o box.json
+
+# --- Reconnaissance / Discovery ---
+T1046:nmap -p- puis -sC -sV sur les ports ouverts
+T1595.002:nikto + nuclei sur le service web
+
+# --- Credential Access ---
+T1110.003:password spraying via netexec
+T1558.004:AS-REP roasting d'un compte sans pré-auth
+T1003.006:DCSync des hashes du domaine (secretsdump)
+
+# --- Initial Access ---
+T1190:exploit de l'app web publique -> webshell
+T1078:réutilisation de creds valides sur SMB/WinRM
+
+# --- Execution ---
+T1059:reverse shell bash stabilisé
+
+# --- Privilege Escalation ---
+T1548:sudo mal configuré (GTFOBins)
+T1068:exploit local vers root
+
+# --- Lateral Movement ---
+T1550.002:Pass-the-Hash vers un 2e host
+T1021.006:accès WinRM (evil-winrm)
+
+# --- Command & Control (labs multi-machines) ---
+T1090.001:proxy interne via ligolo-ng
+T1572:tunnel chisel vers le sous-réseau
+
+# --- Collection ---
+T1005:récupération de user.txt et root.txt

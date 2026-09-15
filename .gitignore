@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Sorties de génération / engagements (ne pas versionner de données de box)
+*.json
+!skills/htb-workflow/attack-navigator-layer.template.json
+scans/
+loot/
+exploits/
+creds.txt
+notes.md
+techniques.txt
+
+# Journaux d'installation
+htb-install-*.log
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+*.swp
+
+# Config locale Claude Code (permissions machine, ne pas versionner)
+.claude/settings.local.json

@@ -1,0 +1,204 @@
+{
+  "name": "Box exemple (template)",
+  "versions": {
+    "attack": "15",
+    "navigator": "4.9.0",
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "Modèle de layer ATT&CK Navigator — techniques couvertes par les skills htb-*. Remplacer par les techniques réellement employées.",
+  "filters": {
+    "platforms": [
+      "Linux",
+      "Windows",
+      "Network"
+    ]
+  },
+  "sorting": 0,
+  "layout": {
+    "layout": "side",
+    "showID": true,
+    "showName": true
+  },
+  "hideDisabled": false,
+  "techniques": [
+    {
+      "techniqueID": "T1046",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "nmap -p- puis -sC -sV sur les ports ouverts",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1595.002",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "nikto + nuclei sur le service web",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1110.003",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "password spraying via netexec",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1558.004",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "AS-REP roasting d'un compte sans pré-auth",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1003.006",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "DCSync des hashes du domaine (secretsdump)",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1190",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "exploit de l'app web publique -> webshell",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1078",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "réutilisation de creds valides sur SMB/WinRM",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1059",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "reverse shell bash stabilisé",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1548",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "sudo mal configuré (GTFOBins)",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1068",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "exploit local vers root",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1550.002",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "Pass-the-Hash vers un 2e host",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1021.006",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "accès WinRM (evil-winrm)",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1090.001",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "proxy interne via ligolo-ng",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1572",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "tunnel chisel vers le sous-réseau",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    },
+    {
+      "techniqueID": "T1005",
+      "score": 100,
+      "color": "#c0392b",
+      "comment": "récupération de user.txt et root.txt",
+      "enabled": true,
+      "metadata": [],
+      "links": [],
+      "showSubtechniques": false
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#ffffff",
+      "#c0392b"
+    ],
+    "minValue": 0,
+    "maxValue": 100
+  },
+  "legendItems": [
+    {
+      "label": "Technique employée sur la box",
+      "color": "#c0392b"
+    }
+  ],
+  "metadata": [
+    {
+      "name": "généré",
+      "value": "2026-09-14"
+    },
+    {
+      "name": "outil",
+      "value": "htb-workflow/gen-navigator-layer.py"
+    }
+  ],
+  "showTacticRowBackground": true,
+  "tacticRowBackground": "#205b70",
+  "selectTechniquesAcrossTactics": true,
+  "selectSubtechniquesWithParent": false
+}

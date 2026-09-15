@@ -1,0 +1,67 @@
+name: CI
+
+# Contrôles qualité du dépôt Claude-HTB-SKILL :
+#  - shellcheck sur tous les scripts .sh
+#  - lint Python (ruff) + compilation du générateur
+#  - validation du frontmatter des SKILL.md et du layer ATT&CK Navigator
+#  - vérification que le JSON du layer est bien formé
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck (scripts bash)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
+      - name: Lint des scripts .sh
+        run: |
+          set -e
+          mapfile -t files < <(find . -type f -name '*.sh' -not -path './.git/*')
+          echo "Scripts analysés :"; printf '  %s\n' "${files[@]}"
+          # .shellcheckrc à la racine fournit la configuration (external-sources, disables).
+          shellcheck --severity=warning "${files[@]}"
+      - name: Vérifier la syntaxe (bash -n)
+        run: |
+          for f in $(find . -type f -name '*.sh' -not -path './.git/*'); do
+            bash -n "$f" && echo "OK  $f"
+          done
+
+  python:
+    name: Python (lint + générateur)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installer les dépendances
+        run: pip install --quiet ruff pyyaml
+      - name: Lint ruff
+        run: ruff check skills/htb-workflow/gen-navigator-layer.py tools/validate.py
+      - name: Compilation
+        run: python -m py_compile skills/htb-workflow/gen-navigator-layer.py tools/validate.py
+
+  validate:
+    name: Validation (skills + layer ATT&CK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installer PyYAML
+        run: pip install --quiet pyyaml
+      - name: Valider frontmatter, layer JSON et générateur
+        run: python tools/validate.py
+      - name: Vérifier que le JSON du layer parse
+        run: python -c "import json; json.load(open('skills/htb-workflow/attack-navigator-layer.template.json', encoding='utf-8')); print('layer JSON OK')"
