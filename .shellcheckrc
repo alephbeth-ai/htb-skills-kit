@@ -1,10 +1,10 @@
-# Configuration ShellCheck pour la CI
-# Autorise le suivi des fichiers sourcés (versions.env, lib/common.sh)
+# ShellCheck configuration for CI
+# Allows following sourced files (versions.env, lib/common.sh)
 external-sources=true
-# Checks désactivés (motifs volontaires du projet) :
-#   SC1091 : fichier sourcé non analysable statiquement (chemin dynamique).
-#   SC2086 : $SUDO est laissé non quoté À DESSEIN — vaut "" (root) ou "sudo".
-#            Le quoter casserait la commande quand la variable est vide.
-#   SC2059 : codes couleur (constantes) dans les chaînes de format printf —
-#            motif d'affichage volontaire, aucune entrée utilisateur.
+# Disabled checks (deliberate project patterns):
+#   SC1091: sourced file not statically analyzable (dynamic path).
+#   SC2086: $SUDO is left unquoted ON PURPOSE — it is "" (root) or "sudo".
+#           Quoting it would break the command when the variable is empty.
+#   SC2059: color codes (constants) in printf format strings —
+#           deliberate display pattern, no user input.
 disable=SC1091,SC2086,SC2059

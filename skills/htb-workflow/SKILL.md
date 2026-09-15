@@ -1,179 +1,180 @@
 ---
 name: htb-workflow
 description: >
-  Orchestrateur d'engagement Hack The Box / lab autorisé, aligné sur le framework
-  MITRE ATT&CK. À déclencher au tout début d'une box, ou quand l'agent doit
-  décider "quoi faire ensuite". Cette skill est le chef d'orchestre : elle mappe
-  chaque phase (Recon → Initial Access → Execution → PrivEsc → Lateral Movement →
-  Collection) sur les tactiques ATT&CK et sur les skills htb-* spécialisées,
-  définit le format partagé de creds.txt / notes, et fixe les critères de passage
-  d'une phase à la suivante. Produit un plan d'attaque ordonné et l'état courant.
+  Orchestrator for Hack The Box / authorized-lab engagements, aligned with the
+  MITRE ATT&CK framework. Trigger it at the very start of a box, or whenever the
+  agent must decide "what to do next". This skill is the conductor: it maps each
+  phase (Recon → Initial Access → Execution → PrivEsc → Lateral Movement →
+  Collection) onto ATT&CK tactics and onto the specialized htb-* skills, defines
+  the shared format of creds.txt / notes, and sets the criteria for moving from
+  one phase to the next. Produces an ordered attack plan and the current state.
 metadata:
   type: reference
   category: orchestration
   framework: "MITRE ATT&CK Enterprise"
-  legal: "Cibles autorisées uniquement (HTB, labs, CTF, systèmes vous appartenant)."
+  legal: "Authorized targets only (HTB, labs, CTF, systems you own)."
 ---
 
-# HTB — Orchestration d'engagement (aligné MITRE ATT&CK)
+# HTB — Engagement orchestration (MITRE ATT&CK-aligned)
 
-## Rôle de cette skill
-C'est le **point d'entrée** et le **superviseur**. L'agent la charge en premier,
-puis délègue chaque étape à une skill spécialisée (`htb-recon`, `htb-web-enum`…).
-Elle répond en continu à trois questions :
-1. Où en suis-je ? (état, tactique ATT&CK courante)
-2. Quelle skill appeler maintenant ?
-3. Quel critère me fait passer à la phase suivante ?
+## Role of this skill
+This is the **entry point** and the **supervisor**. The agent loads it first,
+then delegates each step to a specialized skill (`htb-recon`, `htb-web-enum`…).
+It continuously answers three questions:
+1. Where am I? (state, current ATT&CK tactic)
+2. Which skill do I call now?
+3. What criterion moves me to the next phase?
 
-## Garde-fou
-N'orchestrer que contre des cibles autorisées (IP HTB assignée, lab, CTF, système
-possédé). Journaliser chaque action. Ne jamais élargir le périmètre.
+## Guardrail
+Only orchestrate against authorized targets (assigned HTB IP, lab, CTF, system
+you own). Log every action. Never expand the scope.
 
 ---
 
-## Boucle d'orchestration (machine à états)
+## Orchestration loop (state machine)
 
 ```
         ┌──────────────────────────────────────────────────────────────┐
-        │  Pour CHAQUE cible/host :                                     │
-        │  1. Se demander : quelle est la tactique ATT&CK en cours ?    │
-        │  2. Appeler la skill htb-* correspondante                     │
-        │  3. Enregistrer les trouvailles dans notes.md / creds.txt     │
-        │  4. Rejouer tout nouveau credential PARTOUT (password reuse)   │
-        │  5. Critère de sortie atteint ? -> phase suivante, sinon 1    │
+        │  For EACH target/host:                                       │
+        │  1. Ask yourself: what is the current ATT&CK tactic?         │
+        │  2. Call the matching htb-* skill                            │
+        │  3. Record findings in notes.md / creds.txt                  │
+        │  4. Replay every new credential EVERYWHERE (password reuse)  │
+        │  5. Exit criterion met? -> next phase, otherwise 1           │
         └──────────────────────────────────────────────────────────────┘
 ```
 
-Principe directeur : **énumérer avant d'exploiter**, **rejouer les creds partout**,
-**tout consigner**.
+Guiding principle: **enumerate before exploiting**, **replay creds everywhere**,
+**log everything**.
 
 ---
 
-## Phases mappées sur MITRE ATT&CK
+## Phases mapped onto MITRE ATT&CK
 
-| # | Phase HTB | Tactique ATT&CK (ID) | Techniques clés (ID) | Skill déléguée | Critère de sortie |
+| # | HTB phase | ATT&CK tactic (ID) | Key techniques (ID) | Delegated skill | Exit criterion |
 |---|---|---|---|---|---|
-| 0 | Preflight (hors ATT&CK) | — | Contrôle périmètre + VPN (tun0), scaffolding | `htb-preflight` | Feu vert : IP/LHOST fixés, dossier créé |
-| 1 | Reconnaissance réseau | Reconnaissance (TA0043), Discovery (TA0007) | Active Scanning (T1595), Network Service Discovery (T1046) | `htb-recon` | Liste des ports/services établie |
-| 2 | Énumération des services | Reconnaissance (TA0043) | Gather Victim Host Info (T1592), Vuln Scanning (T1595.002) | `htb-web-enum`, `htb-smb-enum`, `htb-active-directory` | Vecteur d'entrée ou creds identifiés |
-| 3 | Accès aux identifiants | Credential Access (TA0006) | Brute Force (T1110), Kerberoasting (T1558.003), AS-REP Roasting (T1558.004) | `htb-password-attacks`, `htb-active-directory` | Au moins un credential valide |
-| 4 | Accès initial | Initial Access (TA0001) | Exploit Public-Facing App (T1190), Valid Accounts (T1078) | `htb-exploitation`, `htb-smb-enum` | Exécution de code / session obtenue |
-| 5 | Exécution & foothold | Execution (TA0002) | Command/Scripting Interpreter (T1059) | `htb-shells` | Shell interactif stable (user flag) |
-| 6 | Élévation de privilèges | Privilege Escalation (TA0004) | Abuse Elevation Control (T1548), Exploitation for PrivEsc (T1068) | `htb-privesc`, `htb-active-directory` | root / SYSTEM / Domain Admin |
-| 7 | Persistance (optionnel HTB) | Persistence (TA0003) | Valid Accounts (T1078), SSH Authorized Keys (T1098.004) | `htb-privesc` | Accès reproductible (si utile) |
-| 8 | Mouvement latéral | Lateral Movement (TA0008) | Pass-the-Hash (T1550.002), Remote Services (T1021) | `htb-active-directory`, `htb-shells` | Nouveau host compromis |
-| 9 | Pivoting réseau | Lateral Movement (TA0008), Command & Control (TA0011) | Internal Proxy (T1090.001), Protocol Tunneling (T1572) | `htb-pivoting` | Réseau interne routable |
-| 10 | Collecte flags & rapport | Collection (TA0009) | Data from Local System (T1005) | `htb-report` (+ layer ATT&CK) | user.txt + root.txt + rapport produit |
+| 0 | Preflight (outside ATT&CK) | — | Scope check + VPN (tun0), scaffolding | `htb-preflight` | Green light: IP/LHOST set, folder created |
+| 1 | Network reconnaissance | Reconnaissance (TA0043), Discovery (TA0007) | Active Scanning (T1595), Network Service Discovery (T1046) | `htb-recon` | Ports/services list established |
+| 2 | Service enumeration | Reconnaissance (TA0043) | Gather Victim Host Info (T1592), Vuln Scanning (T1595.002) | `htb-web-enum`, `htb-smb-enum`, `htb-active-directory` | Entry vector or creds identified |
+| 3 | Credential access | Credential Access (TA0006) | Brute Force (T1110), Kerberoasting (T1558.003), AS-REP Roasting (T1558.004) | `htb-password-attacks`, `htb-active-directory` | At least one valid credential |
+| 4 | Initial access | Initial Access (TA0001) | Exploit Public-Facing App (T1190), Valid Accounts (T1078) | `htb-exploitation`, `htb-smb-enum` | Code execution / session obtained |
+| 5 | Execution & foothold | Execution (TA0002) | Command/Scripting Interpreter (T1059) | `htb-shells` | Stable interactive shell (user flag) |
+| 6 | Privilege escalation | Privilege Escalation (TA0004) | Abuse Elevation Control (T1548), Exploitation for PrivEsc (T1068) | `htb-privesc`, `htb-active-directory` | root / SYSTEM / Domain Admin |
+| 7 | Persistence (optional on HTB) | Persistence (TA0003) | Valid Accounts (T1078), SSH Authorized Keys (T1098.004) | `htb-privesc` | Reproducible access (if useful) |
+| 8 | Lateral movement | Lateral Movement (TA0008) | Pass-the-Hash (T1550.002), Remote Services (T1021) | `htb-active-directory`, `htb-shells` | New host compromised |
+| 9 | Network pivoting | Lateral Movement (TA0008), Command & Control (TA0011) | Internal Proxy (T1090.001), Protocol Tunneling (T1572) | `htb-pivoting` | Internal network routable |
+| 10 | Flag collection & reporting | Collection (TA0009) | Data from Local System (T1005) | `htb-report` (+ ATT&CK layer) | user.txt + root.txt + report produced |
 
-> Note HTB : la Persistance (phase 7) et l'exfiltration réelle sont rarement
-> nécessaires sur une box simple ; elles sont pertinentes en Pro Lab multi-hôtes.
-
----
-
-## Arbre de décision "quoi faire ensuite ?"
-
-```
-Pas encore vérifié périmètre/VPN ?    -> htb-preflight  (+ ./bin/new-box.sh)
-Rien encore ?                         -> htb-recon                     (T1046)
-Port 80/443/8080 ouvert ?             -> htb-web-enum                  (T1595.002)
-Port 445/139/389 ouvert ?             -> htb-smb-enum                  (T1592)
-Domain Controller / domaine .htb ?    -> htb-active-directory          (TA0006/TA0008)
-J'ai un hash / un login à forcer ?    -> htb-password-attacks          (T1110/T1558)
-J'ai service+version, pas d'accès ?   -> htb-exploitation              (T1190)
-J'ai une RCE / injection ?            -> htb-shells                    (T1059)
-J'ai un shell non privilégié ?        -> htb-privesc                   (T1548/T1068)
-Nouveaux creds trouvés ?              -> les rejouer PARTOUT, puis reboucler
-2e interface / réseau interne ?       -> htb-pivoting                  (T1090/T1572)
-user.txt + root.txt ?                 -> htb-report (rapport + ATT&CK layer)
-```
-
-Règle transverse : **à chaque nouveau credential**, repasser par la phase 4
-(Valid Accounts, T1078) sur tous les services connus avant de continuer.
+> HTB note: Persistence (phase 7) and real exfiltration are rarely needed on a
+> simple box; they are relevant in multi-host Pro Labs.
 
 ---
 
-## Fichiers d'état partagés (contrat entre skills)
+## Decision tree "what to do next?"
 
-L'agent maintient un dossier d'engagement par cible. Toutes les skills lisent et
-écrivent ces fichiers.
+```
+Scope/VPN not checked yet?              -> htb-preflight  (+ ./bin/new-box.sh)
+Nothing done yet?                       -> htb-recon                     (T1046)
+Port 80/443/8080 open?                  -> htb-web-enum                  (T1595.002)
+Port 445/139/389 open?                  -> htb-smb-enum                  (T1592)
+Domain Controller / .htb domain?        -> htb-active-directory          (TA0006/TA0008)
+Got a hash / a login to crack?          -> htb-password-attacks          (T1110/T1558)
+Got service+version, no access?         -> htb-exploitation              (T1190)
+Got an RCE / injection?                 -> htb-shells                    (T1059)
+Got an unprivileged shell?              -> htb-privesc                   (T1548/T1068)
+New creds found?                        -> replay them EVERYWHERE, then loop back
+2nd interface / internal network?       -> htb-pivoting                  (T1090/T1572)
+user.txt + root.txt?                    -> htb-report (report + ATT&CK layer)
+```
+
+Cross-cutting rule: **for every new credential**, go back through phase 4
+(Valid Accounts, T1078) against all known services before continuing.
+
+---
+
+## Shared state files (contract between skills)
+
+The agent maintains one engagement folder per target. Every skill reads and
+writes these files.
 
 ### `creds.txt` — format
-Une ligne par identifiant, champs séparés par `|` :
+One line per credential, fields separated by `|`:
 ```
-# host | service | domaine | user | secret | type | source | validé(o/n)
-10.10.10.10 | smb    | MACHINE | svc_web | Summer2024! | password | partage Backup | o
-10.10.10.10 | ntlm   | MACHINE | admin   | aad3b...:e19cc... | hash     | secretsdump   | o
-10.10.10.10 | ssh    | -       | john    | -               | key      | /home/john/.ssh | o
+# host | service | domain | user | secret | type | source | validated(y/n)
+10.10.10.10 | smb    | MACHINE | svc_web | Summer2024! | password | Backup share | y
+10.10.10.10 | ntlm   | MACHINE | admin   | aad3b...:e19cc... | hash     | secretsdump   | y
+10.10.10.10 | ssh    | -       | john    | -               | key      | /home/john/.ssh | y
 ```
 - `type` ∈ `password | hash | ntlm | key | ticket`
-- Tout credential `validé=o` doit être testé sur SMB / WinRM / SSH / MSSQL / LDAP.
+- Any credential with `validated=y` must be tested against SMB / WinRM / SSH / MSSQL / LDAP.
 
-### `notes.md` — squelette
+### `notes.md` — skeleton
 ```markdown
-# <Nom box> — <IP>
-## État ATT&CK courant : <tactique / phase #>
+# <Box name> — <IP>
+## Current ATT&CK state: <tactic / phase #>
 
 ## Ports & services (htb-recon)
 - 22/tcp ssh OpenSSH 8.2
 - 80/tcp http nginx 1.18
 
-## Surface web (htb-web-enum)
+## Web surface (htb-web-enum)
 ## SMB / AD (htb-smb-enum / htb-active-directory)
-## Foothold (comment obtenu, T####)
-## PrivEsc (vecteur, T####)
-## Hosts internes (htb-pivoting)
+## Foothold (how obtained, T####)
+## PrivEsc (vector, T####)
+## Internal hosts (htb-pivoting)
 ## Flags
-- user.txt : ...
-- root.txt : ...
+- user.txt: ...
+- root.txt: ...
 ```
 
-### `hosts.md` (labs multi-machines)
-Table : `host | rôle | interfaces/réseaux vus | accès obtenu | pivote vers`.
+### `hosts.md` (multi-machine labs)
+Table: `host | role | interfaces/networks seen | access obtained | pivots to`.
 
 ---
 
-## Rapport final — ATT&CK Navigator
+## Final report — ATT&CK Navigator
 
-En fin de box (user.txt + root.txt obtenus), l'agent produit un **layer ATT&CK
-Navigator** visualisant toutes les techniques employées. Deux fichiers fournis :
+At the end of a box (user.txt + root.txt obtained), the agent produces an
+**ATT&CK Navigator layer** visualizing every technique used. Two files are
+provided:
 
-- `gen-navigator-layer.py` — générateur (catalogue des techniques des skills htb-*).
-- `techniques.example.txt` — exemple d'entrée (un `ID[:commentaire]` par ligne).
-- `attack-navigator-layer.template.json` — layer modèle déjà généré, importable tel quel.
+- `gen-navigator-layer.py` — generator (catalog of the htb-* skills' techniques).
+- `techniques.example.txt` — sample input (one `ID[:comment]` per line).
+- `attack-navigator-layer.template.json` — pre-generated template layer, importable as-is.
 
-### Procédure
-1. Tout au long de la box, ajouter chaque technique employée dans un
-   `techniques.txt` (au format `T####[:commentaire]`), ou la déduire de `notes.md`.
-2. Générer le layer :
+### Procedure
+1. Throughout the box, add each technique used to a `techniques.txt` (in the
+   `T####[:comment]` format), or derive it from `notes.md`.
+2. Generate the layer:
    ```bash
-   python3 gen-navigator-layer.py -n "Nom de la box" -f techniques.txt -o box.json
-   # ou en passant les IDs directement :
+   python3 gen-navigator-layer.py -n "Box name" -f techniques.txt -o box.json
+   # or by passing the IDs directly:
    python3 gen-navigator-layer.py -n "Forest" T1046 T1558.004:AS-REP T1550.002:PtH -o forest.json
    ```
-3. Importer dans <https://mitre-attack.github.io/attack-navigator/> :
+3. Import into <https://mitre-attack.github.io/attack-navigator/>:
    **Open Existing Layer → Upload from local → box.json**.
-   Les techniques employées ressortent en rouge (score 100), le commentaire au survol.
+   The techniques used show up in red (score 100), with the comment on hover.
 
-### Intégration dans la boucle
-La phase 10 (Collection, TA0009) se termine par la génération de ce layer. L'agent
-alimente `techniques.txt` en parallèle de `creds.txt`/`notes.md` : chaque appel à
-une skill htb-* correspond à une ou plusieurs techniques du tableau ATT&CK ci-dessus,
-qu'il consigne au moment où elles réussissent.
+### Integration into the loop
+Phase 10 (Collection, TA0009) ends with the generation of this layer. The agent
+populates `techniques.txt` alongside `creds.txt`/`notes.md`: each call to an
+htb-* skill corresponds to one or more techniques from the ATT&CK table above,
+which it records the moment they succeed.
 
-## Sortie attendue de l'agent à chaque tour
-Quand cette skill est active, l'agent répond de façon structurée :
-1. **Phase ATT&CK courante** (nom + ID).
-2. **Constat** : ce que l'étape précédente a produit.
-3. **Prochaine action** : quelle skill htb-* et pourquoi.
-4. **Mise à jour d'état** : lignes ajoutées à `creds.txt` / `notes.md`.
+## Expected agent output on each turn
+When this skill is active, the agent responds in a structured way:
+1. **Current ATT&CK phase** (name + ID).
+2. **Finding**: what the previous step produced.
+3. **Next action**: which htb-* skill and why.
+4. **State update**: lines added to `creds.txt` / `notes.md`.
 
-## Convention d'attaque
-- `LHOST` = interface VPN HTB (`tun0`), jamais `eth0` — vérifier `ip a show tun0`.
-- Sauvegarder chaque sortie d'outil (`-oN`, `-o`) pour re-parsing.
-- Préférer l'énumération complète à l'exploitation précoce.
-- Ne pas exécuter d'exploit non relu (cf. `htb-exploitation`).
+## Attack conventions
+- `LHOST` = HTB VPN interface (`tun0`), never `eth0` — check `ip a show tun0`.
+- Save every tool's output (`-oN`, `-o`) for re-parsing.
+- Prefer full enumeration over early exploitation.
+- Do not run an unreviewed exploit (see `htb-exploitation`).
 
-## Références ATT&CK
-Framework MITRE ATT&CK Enterprise. Les identifiants (T####, TA####) permettent
-à l'agent de tracer chaque action et de produire un rapport aligné sur ATT&CK en
-fin d'engagement.
+## ATT&CK references
+MITRE ATT&CK Enterprise framework. The identifiers (T####, TA####) let the agent
+trace every action and produce an ATT&CK-aligned report at the end of the
+engagement.

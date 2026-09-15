@@ -1,10 +1,10 @@
 name: CI
 
-# Contrôles qualité du dépôt Claude-HTB-SKILL :
-#  - shellcheck sur tous les scripts .sh
-#  - lint Python (ruff) + compilation du générateur
-#  - validation du frontmatter des SKILL.md et du layer ATT&CK Navigator
-#  - vérification que le JSON du layer est bien formé
+# Quality checks for the Claude-HTB-SKILL repository:
+#  - shellcheck on all .sh scripts
+#  - Python lint (ruff) + compilation of the generator
+#  - validation of the SKILL.md frontmatter and the ATT&CK Navigator layer
+#  - verification that the layer JSON is well-formed
 
 on:
   push:
@@ -17,34 +17,34 @@ permissions:
 
 jobs:
   shellcheck:
-    name: ShellCheck (scripts bash)
+    name: ShellCheck (bash scripts)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Installer shellcheck
+      - name: Install shellcheck
         run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
-      - name: Lint des scripts .sh
+      - name: Lint the .sh scripts
         run: |
           set -e
           mapfile -t files < <(find . -type f -name '*.sh' -not -path './.git/*')
-          echo "Scripts analysés :"; printf '  %s\n' "${files[@]}"
-          # .shellcheckrc à la racine fournit la configuration (external-sources, disables).
+          echo "Scripts analyzed:"; printf '  %s\n' "${files[@]}"
+          # .shellcheckrc at the root provides the configuration (external-sources, disables).
           shellcheck --severity=warning "${files[@]}"
-      - name: Vérifier la syntaxe (bash -n)
+      - name: Check syntax (bash -n)
         run: |
           for f in $(find . -type f -name '*.sh' -not -path './.git/*'); do
             bash -n "$f" && echo "OK  $f"
           done
 
   python:
-    name: Python (lint + générateur)
+    name: Python (lint + generator)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Installer les dépendances
+      - name: Install dependencies
         run: pip install --quiet ruff pyyaml
       - name: Lint ruff
         run: ruff check skills/htb-workflow/gen-navigator-layer.py tools/validate.py
@@ -52,16 +52,16 @@ jobs:
         run: python -m py_compile skills/htb-workflow/gen-navigator-layer.py tools/validate.py
 
   validate:
-    name: Validation (skills + layer ATT&CK)
+    name: Validation (skills + ATT&CK layer)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Installer PyYAML
+      - name: Install PyYAML
         run: pip install --quiet pyyaml
-      - name: Valider frontmatter, layer JSON et générateur
+      - name: Validate frontmatter, JSON layer and generator
         run: python tools/validate.py
-      - name: Vérifier que le JSON du layer parse
+      - name: Check that the layer JSON parses
         run: python -c "import json; json.load(open('skills/htb-workflow/attack-navigator-layer.template.json', encoding='utf-8')); print('layer JSON OK')"

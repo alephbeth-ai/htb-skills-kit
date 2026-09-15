@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# check-tools.sh — Vérifie la présence et l'état des outils HTB (OpenClaw)
+# check-tools.sh — Checks the presence and status of HTB tools (OpenClaw)
 # ------------------------------------------------------------------------------
-# À lancer après installation, ou avant une box, pour savoir sur quoi compter.
-# Affiche un tableau OK / ABSENT par groupe, un total, et un code de sortie
-# non nul si des outils manquent (utile en CI).
+# Run after installation, or before a box, to know what you can rely on.
+# Prints an OK / MISSING table per group, a total, and a non-zero exit code
+# if tools are missing (useful in CI).
 #
-# Usage :
-#   ./check-tools.sh            # tous les groupes
-#   ./check-tools.sh web ad     # groupes ciblés
-#   ./check-tools.sh --quiet    # seulement le résumé
+# Usage:
+#   ./check-tools.sh            # all groups
+#   ./check-tools.sh web ad     # targeted groups
+#   ./check-tools.sh --quiet    # summary only
 # ==============================================================================
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,13 +22,13 @@ QUIET=0; ARGS=()
 for a in "$@"; do
   case "$a" in
     --quiet|-q) QUIET=1 ;;
-    -h|--help) echo "Usage: $0 [--quiet] [groupes...]"; exit 0 ;;
+    -h|--help) echo "Usage: $0 [--quiet] [groups...]"; exit 0 ;;
     *) ARGS+=("$a") ;;
   esac
 done
 
-# Groupe -> "binaire:paquet-affiché ..." (binaire testé via command -v ;
-# certains outils ont un chemin fixe testé à part plus bas).
+# Group -> "binary:displayed-package ..." (binary tested via command -v;
+# some tools have a fixed path tested separately below).
 declare -A TOOLSETS
 TOOLSETS[core]="git curl wget python3 pipx go jq"
 TOOLSETS[recon]="nmap masscan rustscan autorecon"
@@ -40,10 +40,10 @@ TOOLSETS[exploit]="msfconsole searchsploit"
 TOOLSETS[shells]="nc socat pwncat-cs"
 TOOLSETS[pivot]="proxychains4 sshuttle chisel ligolo-proxy"
 
-# Ordre d'affichage
+# Display order
 ORDER=(core recon web smb ad passwords exploit shells pivot)
 
-# Fichiers/dossiers attendus (hors PATH)
+# Expected files/directories (outside PATH)
 declare -A PATHS
 PATHS[SecLists]="/usr/share/seclists /opt/SecLists"
 PATHS[rockyou]="/usr/share/wordlists/rockyou.txt"
@@ -51,10 +51,10 @@ PATHS[linpeas]="/opt/PEASS-ng/linPEAS /usr/share/peass"
 PATHS[pspy]="/opt/pspy /usr/bin/pspy64"
 
 have() { command -v "$1" >/dev/null 2>&1; }
-# shellcheck disable=SC2086  # découpage voulu : liste de chemins séparés par espaces
+# shellcheck disable=SC2086  # intentional splitting: space-separated list of paths
 path_exists() { local p; for p in $1; do [[ -e "$p" ]] && return 0; done; return 1; }
 
-# Quelques alias : binaire réel différent du nom affiché
+# A few aliases: real binary differs from the displayed name
 resolve() {
   case "$1" in
     proxychains4) have proxychains4 || have proxychains ;;
@@ -66,45 +66,45 @@ resolve() {
 
 TOTAL_OK=0; TOTAL_MISS=0; MISSING=()
 
-echo -e "${B}== Vérification des outils HTB ==${N}"
+echo -e "${B}== HTB tools check ==${N}"
 for g in "${ORDER[@]}"; do
-  # filtrer si des groupes ont été demandés
+  # filter if groups were requested
   if [[ ${#ARGS[@]} -gt 0 ]]; then
     printf '%s\n' "${ARGS[@]}" | grep -qx "$g" || continue
   fi
   [[ -z "${TOOLSETS[$g]:-}" ]] && continue
   [[ $QUIET -eq 0 ]] && echo -e "\n${C}[$g]${N}"
-  # shellcheck disable=SC2086  # découpage voulu : liste de binaires séparés par espaces
+  # shellcheck disable=SC2086  # intentional splitting: space-separated list of binaries
   for bin in ${TOOLSETS[$g]}; do
     if resolve "$bin"; then
       TOTAL_OK=$((TOTAL_OK+1))
       [[ $QUIET -eq 0 ]] && printf "  ${G}✔${N} %-22s %s\n" "$bin" "$(command -v "$bin" 2>/dev/null || echo)"
     else
       TOTAL_MISS=$((TOTAL_MISS+1)); MISSING+=("$bin")
-      [[ $QUIET -eq 0 ]] && printf "  ${R}x${N} %-22s ${R}ABSENT${N}\n" "$bin"
+      [[ $QUIET -eq 0 ]] && printf "  ${R}x${N} %-22s ${R}MISSING${N}\n" "$bin"
     fi
   done
 done
 
-# Ressources non-PATH (affichées si on ne cible pas de groupe précis)
+# Non-PATH resources (shown when no specific group is targeted)
 if [[ ${#ARGS[@]} -eq 0 ]]; then
-  [[ $QUIET -eq 0 ]] && echo -e "\n${C}[ressources]${N}"
+  [[ $QUIET -eq 0 ]] && echo -e "\n${C}[resources]${N}"
   for res in SecLists rockyou linpeas pspy; do
     if path_exists "${PATHS[$res]}"; then
       TOTAL_OK=$((TOTAL_OK+1))
       [[ $QUIET -eq 0 ]] && printf "  ${G}✔${N} %-22s\n" "$res"
     else
       TOTAL_MISS=$((TOTAL_MISS+1)); MISSING+=("$res")
-      [[ $QUIET -eq 0 ]] && printf "  ${Y}?${N} %-22s ${Y}introuvable${N}\n" "$res"
+      [[ $QUIET -eq 0 ]] && printf "  ${Y}?${N} %-22s ${Y}not found${N}\n" "$res"
     fi
   done
 fi
 
-echo -e "\n${B}== Résumé ==${N}"
-echo -e "  Présents : ${G}${TOTAL_OK}${N}   Manquants : ${R}${TOTAL_MISS}${N}"
+echo -e "\n${B}== Summary ==${N}"
+echo -e "  Present : ${G}${TOTAL_OK}${N}   Missing : ${R}${TOTAL_MISS}${N}"
 if [[ $TOTAL_MISS -gt 0 ]]; then
-  echo -e "  ${Y}Manquants :${N} ${MISSING[*]}"
-  echo -e "  Installer : ${B}./install-<kali|ubuntu>.sh <groupe>${N}"
+  echo -e "  ${Y}Missing:${N} ${MISSING[*]}"
+  echo -e "  Install : ${B}./install-<kali|ubuntu>.sh <group>${N}"
   exit 1
 fi
-echo -e "  ${G}Tout est en place.${N}"
+echo -e "  ${G}Everything is in place.${N}"
